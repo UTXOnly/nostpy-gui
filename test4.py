@@ -218,8 +218,8 @@ class LandingPage(ttk.Frame):
         self.controller = controller
 
         ttk.Label(self, text="Welcome to the Nostpy Admin GUI").pack(pady=20)
-        ttk.Button(self, text="Manage Relay", command=lambda: controller.show_frame("ManageRelayPage")).pack()
-        ttk.Button(self, text="Query Relay", command=lambda: controller.show_frame("QueryRelayPage")).pack()
+        ttk.Button(self, text="Manage Relay", command=lambda: controller.show_frame("ManageRelayPage")).pack(pady=20)
+        ttk.Button(self, text="Query Relay", command=lambda: controller.show_frame("QueryRelayPage")).pack(pady=20)
 
 
 class ManageRelayPage(ttk.Frame):
@@ -242,29 +242,40 @@ class ManageRelayPage(ttk.Frame):
         self.public_key = tk.StringVar(value="5ce5b352f1ef76b1dffc5694dd5b34126137184cc9a7d78cba841c0635e17952")
         self.private_key = tk.StringVar(value="2b1e4e1f26517dda57458596760bb3bd3bd3717083763166e12983a6421abc18")
         self.content = tk.StringVar()
-        self.kind = tk.StringVar(value="1")
+        self.kind = tk.StringVar()
         self.tags = tk.StringVar(value="[]")
+        self.public_key_to_mod = tk.StringVar()
+        self.kind_to_mod = tk.StringVar()
 
         ttk.Label(sidebar, text="Relay URL").pack(pady=5)
         ttk.Entry(sidebar, textvariable=self.relay_url).pack(pady=5)
 
         ttk.Label(sidebar, text="Public Key").pack(pady=5)
-        ttk.Entry(sidebar, textvariable=self.public_key).pack(pady=5)
+        ttk.Entry(sidebar, textvariable=self.public_key_to_mod).pack(pady=5)
 
-        ttk.Label(sidebar, text="Private Key").pack(pady=5)
-        ttk.Entry(sidebar, textvariable=self.private_key).pack(pady=5)
-
-        ttk.Label(sidebar, text="Content").pack(pady=5)
-        ttk.Entry(sidebar, textvariable=self.content).pack(pady=5)
-
+        #ttk.Label(sidebar, text="Private Key").pack(pady=5)
+        #ttk.Entry(sidebar, textvariable=self.private_key).pack(pady=5)
+#
+        #ttk.Label(sidebar, text="Content").pack(pady=5)
+        #ttk.Entry(sidebar, textvariable=self.content).pack(pady=5)
+#
         ttk.Label(sidebar, text="Kind").pack(pady=5)
-        ttk.Entry(sidebar, textvariable=self.kind).pack(pady=5)
-
-        ttk.Label(sidebar, text="Tags (as JSON array)").pack(pady=5)
-        ttk.Entry(sidebar, textvariable=self.tags).pack(pady=5)
-
-        button1 = ttk.Button(sidebar, text="Send Note", command=self.send_note)
+        ttk.Entry(sidebar, textvariable=self.kind_to_mod).pack(pady=5)
+#
+        #ttk.Label(sidebar, text="Tags (as JSON array)").pack(pady=5)
+        #ttk.Entry(sidebar, textvariable=self.tags).pack(pady=5)
+#
+        button1 = ttk.Button(sidebar, text="Ban pubkey", command=lambda: self.send_note("ban", "client_pub", self.public_key_to_mod.get()))
         button1.pack(pady=10)
+
+        button2 = ttk.Button(sidebar, text="Allow pubkey", command=lambda: self.send_note("allow", "client_pub", self.public_key_to_mod.get()))
+        button2.pack(pady=10)
+
+        button3 = ttk.Button(sidebar, text="Ban kind", command=lambda: self.send_note("ban", "kind", self.kind_to_mod.get()))
+        button3.pack(pady=10)
+
+        button4 = ttk.Button(sidebar, text="Allow kind", command=lambda: self.send_note("allow", "kind", self.kind_to_mod.get()))
+        button4.pack(pady=10)
 
         # Main Content
         main_content = ttk.Frame(self)
@@ -273,13 +284,13 @@ class ManageRelayPage(ttk.Frame):
         self.output_text = tk.Text(main_content, height=20, bg='#2E2E2E', fg='#FFFFFF')
         self.output_text.pack(pady=10, fill='both', expand=True)
 
-    def send_note(self):
+    def send_note(self, verb, type, obj_to_mod):
         relay_urls = [self.relay_url.get()]
         public_key = self.public_key.get()
         private_key = self.private_key.get()
         content = self.content.get()
-        kind = int(self.kind.get())
-        tags = json.loads(self.tags.get())
+        kind = int(42069)
+        tags = [[verb, type, obj_to_mod]]
 
         event = Event(relays=relay_urls, output_widget=self.output_text)
         asyncio.run(event.send_event(public_key, private_key, content, kind, tags))
@@ -347,22 +358,22 @@ class QueryRelayPage(ttk.Frame):
         ttk.Label(sidebar, text="Public Key").pack(pady=5)
         ttk.Entry(sidebar, textvariable=self.public_key).pack(pady=5)
 
-        ttk.Label(sidebar, text="Private Key").pack(pady=5)
-        ttk.Entry(sidebar, textvariable=self.private_key).pack(pady=5)
+        #ttk.Label(sidebar, text="Private Key").pack(pady=5)
+        #ttk.Entry(sidebar, textvariable=self.private_key).pack(pady=5)
+#
+        #ttk.Label(sidebar, text="Content").pack(pady=5)
+        #ttk.Entry(sidebar, textvariable=self.content).pack(pady=5)
 
-        ttk.Label(sidebar, text="Content").pack(pady=5)
-        ttk.Entry(sidebar, textvariable=self.content).pack(pady=5)
+        #ttk.Label(sidebar, text="Kind").pack(pady=5)
+        #ttk.Entry(sidebar, textvariable=self.kind).pack(pady=5)
 
-        ttk.Label(sidebar, text="Kind").pack(pady=5)
-        ttk.Entry(sidebar, textvariable=self.kind).pack(pady=5)
+        #ttk.Label(sidebar, text="Tags (as JSON array)").pack(pady=5)
+        #ttk.Entry(sidebar, textvariable=self.tags).pack(pady=5)
 
-        ttk.Label(sidebar, text="Tags (as JSON array)").pack(pady=5)
-        ttk.Entry(sidebar, textvariable=self.tags).pack(pady=5)
-
-        button1 = ttk.Button(sidebar, text="Send Note", command=self.send_note)
+        button1 = ttk.Button(sidebar, text="Ban pubkey", command=lambda: self.send_note())
         button1.pack(pady=10)
 
-        button2 = ttk.Button(sidebar, text="Query Relays", command=self.query_relays)
+        button2 = ttk.Button(sidebar, text="Query Relays", command=lambda: self.query_relays)
         button2.pack(pady=10)
 
     def send_note(self):
