@@ -1,6 +1,6 @@
 # Nostpy GUI
 
-Nostpy GUI is a relay management client built with Tkinter. It provides an interface to manage relays, enter private and public keys, and query relay allowlists.
+Nostpy GUI is a relay management client built with Tkinter. It provides an interface to manage relays, enter private and public keys, and query relay allowlists. Currently this only works with nostpy-relay using `kind 42021` which is an expiramental kind that only nostpy is using. However this could be compatible wit other relay implementations in the future after more testing and acceptance of the relay management event kind.
 
 ### Features
 
