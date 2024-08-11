@@ -83,6 +83,24 @@ Once the application is running:
 
 * Use the "Query Relay Allowlist" button to view the current allowlist for the relay
 
+### Mac users
+
+Create a virtual environment:
+
+```bash
+python3 -m venv nostpy-env
+source nostpy-env/bin/activate  # On Windows use `nostpy-env\Scripts\activate`
+```
+
+#### Install the required dependencies:
+
+```bash
+pip install -r requirements.txt
+Install the package locally:
+```
+```bash
+pip install .
+```
 ### Contributing
 
 If you'd like to contribute to the project, feel free to open a pull request or file an issue on the GitHub repository: https://github.com/UTXOnly/nostpy-gui
