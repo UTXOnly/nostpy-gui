@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nostpy-gui"
-version = "0.1.10"  # Version bumped
-description = "A relay management client"
+version = "0.1.11"  # Version bumped
+description = "A nostr relay management client"
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
