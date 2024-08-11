@@ -408,7 +408,10 @@ class QueryRelayPage(ttk.Frame):
     def change_text_color(self, color):
         self.output_text.config(fg=color)
 
-
-if __name__ == "__main__":
+def main():
     app = DarkModeApp()
     app.mainloop()
+if __name__ == "__main__":
+    main()
+    #app = DarkModeApp()
+    #app.mainloop()
