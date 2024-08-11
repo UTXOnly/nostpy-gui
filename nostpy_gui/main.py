@@ -1,9 +1,10 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, colorchooser, simpledialog
-from delete import DeleteEventPage
-from landing import LandingPage
-from manage import ManageRelayPage
-from query import QueryRelayPage
+from nostpy_gui.delete import DeleteEventPage
+from nostpy_gui.landing import LandingPage
+from nostpy_gui.manage import ManageRelayPage
+from nostpy_gui.query import QueryRelayPage
+
 
 class DarkModeApp(tk.Tk):
     def __init__(self):
