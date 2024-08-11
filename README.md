@@ -4,10 +4,10 @@ Nostpy GUI is a relay management client built with Tkinter. It provides an inter
 
 ### Features
 
-- Enter and save relay private/public keys and relay URLs.
-- Manage relay allowlists.
-- Query relay allowlists.
-- Dark mode interface.
+- Manage relay allowlists
+- Query relay allowlists
+- Delete events from a given pubkey
+- Dark mode interface
 
 ## Requirements
 
@@ -100,7 +100,7 @@ Traceback (most recent call last):
 ModuleNotFoundError: No module named '_tkinter'
 ```
 
-Create a virtual environment:
+##### Create a virtual environment:
 
 ```bash
 python3 -m venv nostpy-env
@@ -116,7 +116,7 @@ pip install nostpy-gui
 ```
 
 * Note you may need to deactivate and reactivate your virtual environment after installing package
-  * You can run `deactivate` while in the `nostpy-env` birtual environment and then `source nostpy-env/bin/activate` to reactivate
+  * You can run `deactivate` while in the `nostpy-env` virtual environment and then `source nostpy-env/bin/activate` to reactivate
 
 
 ### Contributing
