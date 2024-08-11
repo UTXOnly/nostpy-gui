@@ -79,7 +79,7 @@ class ManageRelayPage(ttk.Frame):
     def send_note(self, verb, type, obj_to_mod):
         relay_urls = [self.relay_url.get()]
         content = self.content.get()
-        kind = int(42069)
+        kind = int(42021)
         tags = [[verb, type, obj_to_mod]]
 
         event = Event(

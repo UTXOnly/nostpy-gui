@@ -48,10 +48,10 @@ class QueryRelayPage(ttk.Frame):
 
         self.treeview = ttk.Treeview(
             self,
-            columns=("client_pub", "kind", "allowed", "mgmt_note_id"),
+            columns=("pubkey", "kind", "allowed", "mgmt_note_id"),
             show="headings",
         )
-        self.treeview.heading("client_pub", text="client_pub")
+        self.treeview.heading("pubkey", text="pubkey")
         self.treeview.heading("kind", text="kind")
         self.treeview.heading("allowed", text="allowed")
         self.treeview.heading("mgmt_note_id", text="mgmt_note_id")
@@ -59,7 +59,7 @@ class QueryRelayPage(ttk.Frame):
 
     def query_allow_list(self):
         relay_urls = [self.relay_url.get()]
-        query_dict = {"kinds": [42069]}
+        query_dict = {"kinds": [42021]}
 
         event = Event(
             relays=relay_urls,
