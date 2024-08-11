@@ -83,7 +83,22 @@ Once the application is running:
 
 * Use the "Query Relay Allowlist" button to view the current allowlist for the relay
 
-### Mac users
+### Troubleshooting
+
+This package installes cleanly on Linux systems but `tkinter` is a bit finnicky on Macs and would help to run the package from a virtual environment to ensure all dependencies are met. Otherwise you might get errors like this one:
+
+```bash
+~/nostpy-gui UTXOnly/pypackagebuild*
+venv ❯ nostpy-gui
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/nostpy-gui", line 5, in <module>
+    from nostpy_gui.main import main
+  File "/opt/homebrew/lib/python3.10/site-packages/nostpy_gui/main.py", line 1, in <module>
+    import tkinter as tk
+  File "/opt/homebrew/Cellar/python@3.10/3.10.14_1/Frameworks/Python.framework/Versions/3.10/lib/python3.10/tkinter/__init__.py", line 37, in <module>
+    import _tkinter # If this fails your Python may not be configured for Tk
+ModuleNotFoundError: No module named '_tkinter'
+```
 
 Create a virtual environment:
 
@@ -94,13 +109,16 @@ source nostpy-env/bin/activate  # On Windows use `nostpy-env\Scripts\activate`
 
 #### Install the required dependencies:
 
+Install the package in your virtual environment:
+
 ```bash
-pip install -r requirements.txt
-Install the package locally:
+pip install nostpy-gui
 ```
-```bash
-pip install .
-```
+
+* Note you may need to deactivate and reactivate your virtual environment after installing package
+  * You can run `deactivate` while in the `nostpy-env` birtual environment and then `source nostpy-env/bin/activate` to reactivate
+
+
 ### Contributing
 
 If you'd like to contribute to the project, feel free to open a pull request or file an issue on the GitHub repository: https://github.com/UTXOnly/nostpy-gui
