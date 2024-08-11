@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, colorchooser
+from tkinter import ttk, messagebox, colorchooser, simpledialog
 import asyncio
 import json
 import secp256k1
@@ -8,16 +8,20 @@ import time
 import websockets
 import ast
 
-
 class Event:
-    def __init__(self, relays, output_widget=None, treeview=None) -> None:
+    def __init__(self, relays, controller, output_widget=None, treeview=None) -> None:
         self.relays = relays
+        self.controller = controller  # Store the controller reference to access keys
         self.output_widget = output_widget
         self.treeview = treeview
+        if self.output_widget:
+            self.output_widget.tag_configure('color32', foreground='#20C20E')
+            self.output_widget.tag_configure('color33', foreground='#FF5733')
+            self.output_widget.tag_configure('color31', foreground='#FF3333')
 
     def print_color(self, text, color):
         if self.output_widget:
-            self.output_widget.insert(tk.END, f"{text}\n")
+            self.output_widget.insert(tk.END, f"{text}\n", (color,))
             self.output_widget.see(tk.END)  # Auto-scroll to the end
 
     def sign_event_id(self, event_id: str, private_key_hex: str) -> str:
@@ -40,15 +44,17 @@ class Event:
         return hashlib.sha256(data_str.encode("UTF-8")).hexdigest()
 
     def create_event(
-        self, public_key: str, private_key_hex: str, content: str, kind: int, tags: list
+        self, content: str, kind: int, tags: list
     ):
+        public_key = self.controller.public_key.get()
+        private_key_hex = self.controller.private_key.get()
         created_at = int(time.time())
         event_id = self.calc_event_id(public_key, created_at, kind, tags, content)
         signature_hex = self.sign_event_id(event_id, private_key_hex)
         try:
             self.verify_signature(event_id, public_key, signature_hex)
         except Exception as exc:
-            self.print_color(f"Error verifying sig: {exc}", "31")
+            self.print_color(f"Error verifying sig: {exc}", "color31")
             return
         event_data = {
             "id": event_id,
@@ -68,42 +74,41 @@ class Event:
                 bytes.fromhex(event_id), bytes.fromhex(sig), None, raw=True
             )
             if result:
-                self.print_color(f"Verification successful for event: {event_id}", "32")
+                self.print_color(f"Verification successful for event: {event_id}", "color32")
                 return True
             else:
-                self.print_color(f"Verification failed for event: {event_id}", "31")
+                self.print_color(f"Verification failed for event: {event_id}", "color31")
                 return False
         except (ValueError, TypeError) as e:
-            self.print_color(f"Error verifying signature for event {event_id}: {e}", "31")
+            self.print_color(f"Error verifying signature for event {event_id}: {e}", "color31")
             return False
 
-    async def send_event(self, public_key, private_key_hex, content, kind, tags):
+    async def send_event(self, content, kind, tags):
         try:
-            event_data = self.create_event(
-                public_key, private_key_hex, content, kind, tags
-            )
+            event_data = self.create_event(content, kind, tags)
             for ws_relay in self.relays:
                 async with websockets.connect(ws_relay) as ws:
                     event_json = ("EVENT", event_data)
-                    self.print_color(f"Sending event:\n{event_json}", "32")
-                    self.print_color(f"to {ws_relay}", "32")
+                    self.print_color(f"Sending event:\n{event_json}", "color32")
+                    self.print_color(f"to {ws_relay}", "color32")
                     await ws.send(json.dumps(event_json))
                     response = await asyncio.wait_for(ws.recv(), timeout=10)
-                    self.print_color(f"Response from {ws_relay} is :\n{response}", "33")
+                    self.print_color(f"Response from {ws_relay} is :\n{response}", "color33")
         except Exception as exc:
-            self.print_color(f"Error in sending event: {exc}", "31")
+            self.print_color(f"Error in sending event: {exc}", "color31")
 
     async def query_relays(self, query_dict, timeout=5):
         for relay in self.relays:
             try:
                 async with websockets.connect(relay) as ws:
-                    query_ws = json.dumps(("REQ", "5326483051590112", query_dict))
+                    query_ws = json.dumps(("REQ", "nostpy_client", query_dict))
                     await ws.send(query_ws)
-                    self.print_color(f"Query sent to relay {relay}:\n{query_ws}", "32")
+                    self.print_color(f"Query sent to relay {relay}:\n{query_ws}", "color32")
 
                     responses_received = 0
                     start_time = time.time()
-                    response_limit = query_dict.get("limit", 3)
+                    response_limit = query_dict.get("limit", 100)
+                    response_list = []
 
                     while (
                         responses_received < response_limit
@@ -111,34 +116,45 @@ class Event:
                     ):
                         try:
                             response = await asyncio.wait_for(ws.recv(), timeout=1)
-                            self.print_color(f"Response from {relay}:\n{response}", "32")
-                            responses_received += 1
-                            self.update_treeview(response)
+                            self.print_color(f"Response from {relay}:\n{response}", "color32")
+                            if response[0] != "EOSE":
+
+                                response_list.append(response)
+                                responses_received += 1
+                            #self.update_treeview(response_list)
+                            
                         except asyncio.TimeoutError:
-                            self.print_color("No response within 1 second, continuing...", "31")
+                            self.print_color("No response within 1 second, continuing...", "color31")
                             break
+                    self.update_treeview(response_list)
             except Exception as exc:
-                self.print_color(f"Exception is {exc}, error querying {relay}", "31")
+                self.print_color(f"Exception is {str(exc)}, error querying {relay}", "color31")
+
+
 
     def update_treeview(self, response_string):
         try:
             # Clear existing data in Treeview
-            for item in self.treeview.get_children():
-                self.treeview.delete(item)
+            #for item in self.treeview.get_children():
+            #    self.treeview.delete(item)
+            #
+            for item in response_string:
+                if item[0] == "EOSE":
+                    return
+                response = ast.literal_eval(item)
+                data = response[2]
 
-            response = ast.literal_eval(response_string)
-            data = response[2]
 
-            for item in data:
                 self.treeview.insert('', 'end', values=(
-                    item.get('id', ''),
-                    item.get('pubkey', ''),
-                    item.get('kind', ''),
-                    item.get('created_at', ''),
-                    item.get('content', '')
+                    data.get('client_pub', ''),
+                    data.get('kind', ''),
+                    data.get('allowed', ''),
+                    data.get('note_id', '')
+                    #item.get('content', '')
                 ))
+                
         except json.JSONDecodeError:
-            self.print_color(f"Error decoding JSON response: {response[2]}", "31")
+            self.print_color(f"Error decoding JSON response: {response[2]}", "color31")
 
 
 class DarkModeApp(tk.Tk):
@@ -152,6 +168,10 @@ class DarkModeApp(tk.Tk):
         container.pack(fill="both", expand=True)
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
+
+        self.private_key = tk.StringVar()
+        self.public_key = tk.StringVar()
+        self.relay_url = tk.StringVar()
 
         self.frames = {}
         for F in (LandingPage, ManageRelayPage, QueryRelayPage):
@@ -189,15 +209,17 @@ class DarkModeApp(tk.Tk):
 
         # File Menu
         file_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Clear Output", command=self.clear_output)
-        file_menu.add_separator()
+        menubar.add_cascade(label="Exit", menu=file_menu)
+        #file_menu.add_command(label="Clear Output", command=self.clear_output)
+        #file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.quit)
 
         # Edit Menu
         edit_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Edit", menu=edit_menu)
+        menubar.add_cascade(label="Manage", menu=edit_menu)
+        edit_menu.add_command(label="Clear Output", command=self.clear_output)
         edit_menu.add_command(label="Change Text Color", command=self.change_text_color)
+        edit_menu.add_command(label="Enter Keys and Relay", command=self.enter_keys_and_relay)
 
     def clear_output(self):
         for frame in self.frames.values():
@@ -211,6 +233,16 @@ class DarkModeApp(tk.Tk):
                 if hasattr(frame, 'change_text_color'):
                     frame.change_text_color(color)
 
+    def enter_keys_and_relay(self):
+        self.private_key.set(simpledialog.askstring("Input", "Enter your private key:", show='*'))
+        self.public_key.set(simpledialog.askstring("Input", "Enter your public key:"))
+        self.relay_url.set(simpledialog.askstring("Input", "Enter your relay URL:"))
+
+        # Save the values in the controller
+        print("Private Key:", self.private_key.get())  # Debugging
+        print("Public Key:", self.public_key.get())    # Debugging
+        print("Relay URL:", self.relay_url.get())      # Debugging
+
 
 class LandingPage(ttk.Frame):
     def __init__(self, parent, controller):
@@ -218,8 +250,41 @@ class LandingPage(ttk.Frame):
         self.controller = controller
 
         ttk.Label(self, text="Welcome to the Nostpy Admin GUI").pack(pady=20)
-        ttk.Button(self, text="Manage Relay", command=lambda: controller.show_frame("ManageRelayPage")).pack(pady=20)
-        ttk.Button(self, text="Query Relay", command=lambda: controller.show_frame("QueryRelayPage")).pack(pady=20)
+
+        ttk.Label(self, text="Relay Admin Privkey Hex").pack(pady=5)
+        self.private_key_entry = ttk.Entry(self, textvariable=self.controller.private_key, width=60)  # Adjust the width as needed
+        self.private_key_entry.pack(pady=5)
+
+        ttk.Label(self, text="Relay Admin Pubkey Hex").pack(pady=5)
+        self.public_key_entry = ttk.Entry(self, textvariable=self.controller.public_key, width=60)  # Adjust the width as needed
+        self.public_key_entry.pack(pady=5)
+
+        ttk.Label(self, text="Relay URL").pack(pady=5)
+        self.relay_url_entry = ttk.Entry(self, textvariable=self.controller.relay_url, width=60)  # Adjust the width as needed
+        self.relay_url_entry.pack(pady=5)
+
+        ttk.Button(self, text="Save Keys and Relay", command=self.save_keys_and_relay).pack(pady=20)
+
+        # Add a separator to divide sections
+        ttk.Separator(self, orient='horizontal').pack(fill='x', pady=10)
+
+        ttk.Button(self, text="Manage Relay Allowlist", command=lambda: controller.show_frame("ManageRelayPage")).pack(pady=10)
+        ttk.Button(self, text="Query Relay Allowlist", command=lambda: controller.show_frame("QueryRelayPage")).pack(pady=20)
+
+    def save_keys_and_relay(self):
+        # Save the values in the main application (controller)
+        self.controller.private_key.set(self.private_key_entry.get())
+        self.controller.public_key.set(self.public_key_entry.get())
+        self.controller.relay_url.set(self.relay_url_entry.get())
+
+        # Debugging print statements
+        print("Private Key:", self.controller.private_key.get())
+        print("Public Key:", self.controller.public_key.get())
+        print("Relay URL:", self.controller.relay_url.get())
+
+
+
+
 
 
 class ManageRelayPage(ttk.Frame):
@@ -227,25 +292,23 @@ class ManageRelayPage(ttk.Frame):
         super().__init__(parent)
         self.controller = controller
 
-        # Title and Back Button
-        title_frame = ttk.Frame(self)
-        title_frame.pack(fill='x', pady=10)
-        ttk.Label(title_frame, text="Manage Relay Page").pack()
-        ttk.Button(title_frame, text="Back to Home", command=lambda: controller.show_frame("LandingPage")).pack()
-
-        # Sidebar
-        sidebar = ttk.Frame(self, width=200)
-        sidebar.pack(side='left', fill='y', padx=10, pady=10)
-        sidebar.pack_propagate(False)
-
-        self.relay_url = tk.StringVar(value="wss://relay.nostpy.lol")
-        self.public_key = tk.StringVar(value="5ce5b352f1ef76b1dffc5694dd5b34126137184cc9a7d78cba841c0635e17952")
-        self.private_key = tk.StringVar(value="2b1e4e1f26517dda57458596760bb3bd3bd3717083763166e12983a6421abc18")
+        self.relay_url = controller.relay_url
+        self.public_key = controller.public_key
+        self.private_key = controller.private_key
         self.content = tk.StringVar()
         self.kind = tk.StringVar()
         self.tags = tk.StringVar(value="[]")
         self.public_key_to_mod = tk.StringVar()
         self.kind_to_mod = tk.StringVar()
+
+        title_frame = ttk.Frame(self)
+        title_frame.pack(fill='x', pady=10)
+        ttk.Label(title_frame, text="Manage Relay Page").pack()
+        ttk.Button(title_frame, text="Back to Home", command=lambda: controller.show_frame("LandingPage")).pack()
+
+        sidebar = ttk.Frame(self, width=200)
+        sidebar.pack(side='left', fill='y', padx=10, pady=10)
+        sidebar.pack_propagate(False)
 
         ttk.Label(sidebar, text="Relay URL").pack(pady=5)
         ttk.Entry(sidebar, textvariable=self.relay_url).pack(pady=5)
@@ -253,31 +316,19 @@ class ManageRelayPage(ttk.Frame):
         ttk.Label(sidebar, text="Public Key").pack(pady=5)
         ttk.Entry(sidebar, textvariable=self.public_key_to_mod).pack(pady=5)
 
-        #ttk.Label(sidebar, text="Private Key").pack(pady=5)
-        #ttk.Entry(sidebar, textvariable=self.private_key).pack(pady=5)
-#
-        #ttk.Label(sidebar, text="Content").pack(pady=5)
-        #ttk.Entry(sidebar, textvariable=self.content).pack(pady=5)
-#
+        button1 = ttk.Button(sidebar, text="Ban pubkey", command=lambda: self.send_note("ban", "client_pub", self.public_key_to_mod.get()))
+        button1.pack(pady=5)
+        button2 = ttk.Button(sidebar, text="Allow pubkey", command=lambda: self.send_note("allow", "client_pub", self.public_key_to_mod.get()))
+        button2.pack(pady=5)
+
         ttk.Label(sidebar, text="Kind").pack(pady=5)
         ttk.Entry(sidebar, textvariable=self.kind_to_mod).pack(pady=5)
-#
-        #ttk.Label(sidebar, text="Tags (as JSON array)").pack(pady=5)
-        #ttk.Entry(sidebar, textvariable=self.tags).pack(pady=5)
-#
-        button1 = ttk.Button(sidebar, text="Ban pubkey", command=lambda: self.send_note("ban", "client_pub", self.public_key_to_mod.get()))
-        button1.pack(pady=10)
-
-        button2 = ttk.Button(sidebar, text="Allow pubkey", command=lambda: self.send_note("allow", "client_pub", self.public_key_to_mod.get()))
-        button2.pack(pady=10)
 
         button3 = ttk.Button(sidebar, text="Ban kind", command=lambda: self.send_note("ban", "kind", self.kind_to_mod.get()))
-        button3.pack(pady=10)
-
+        button3.pack(pady=5)
         button4 = ttk.Button(sidebar, text="Allow kind", command=lambda: self.send_note("allow", "kind", self.kind_to_mod.get()))
-        button4.pack(pady=10)
+        button4.pack(pady=5)
 
-        # Main Content
         main_content = ttk.Frame(self)
         main_content.pack(fill='both', expand=True, padx=10, pady=10)
 
@@ -286,15 +337,12 @@ class ManageRelayPage(ttk.Frame):
 
     def send_note(self, verb, type, obj_to_mod):
         relay_urls = [self.relay_url.get()]
-        public_key = self.public_key.get()
-        private_key = self.private_key.get()
         content = self.content.get()
         kind = int(42069)
         tags = [[verb, type, obj_to_mod]]
 
-        event = Event(relays=relay_urls, output_widget=self.output_text)
-        asyncio.run(event.send_event(public_key, private_key, content, kind, tags))
-        messagebox.showinfo("Send Note", f"Sent note: '{content}' to relay: {relay_urls}")
+        event = Event(relays=relay_urls, controller=self.controller, output_widget=self.output_text)
+        asyncio.run(event.send_event(content, kind, tags))
 
     def clear_output(self):
         self.output_text.delete('1.0', tk.END)
@@ -308,24 +356,21 @@ class QueryRelayPage(ttk.Frame):
         super().__init__(parent)
         self.controller = controller
 
-        self.relay_url = tk.StringVar(value="wss://relay.nostpy.lol")
-        self.public_key = tk.StringVar(value="5ce5b352f1ef76b1dffc5694dd5b34126137184cc9a7d78cba841c0635e17952")
-        self.private_key = tk.StringVar(value="2b1e4e1f26517dda57458596760bb3bd3bd3717083763166e12983a6421abc18")
-        self.content = tk.StringVar()
-        self.kind = tk.StringVar(value="1")
-        self.tags = tk.StringVar(value="[]")
+        self.relay_url = controller.relay_url
+        self.public_key = controller.public_key
 
         ttk.Label(self, text="Query Relay Page").pack(pady=20)
         ttk.Button(self, text="Back to Home", command=lambda: controller.show_frame("LandingPage")).pack()
 
-        # Main Content
         content_frame = ttk.Frame(self)
         content_frame.pack(fill='both', expand=True)
+
+        button1 = ttk.Button(content_frame, text="Show Allow List", command=self.query_allow_list)
+        button1.pack(pady=10)
 
         self.output_text = tk.Text(content_frame, height=10, bg='#2E2E2E', fg='#FFFFFF')
         self.output_text.pack(pady=10, fill='x', expand=True)
 
-        # Configure Treeview for dark mode
         style = ttk.Style()
         style.configure("Treeview",
                         background="#2E2E2E",
@@ -339,70 +384,21 @@ class QueryRelayPage(ttk.Frame):
         style.map("Treeview.Heading",
                   background=[('active', '#666666')])
 
-        self.treeview = ttk.Treeview(content_frame, columns=("ID", "Pubkey", "Kind", "Created_At", "Content"), show='headings')
-        self.treeview.heading("ID", text="ID")
-        self.treeview.heading("Pubkey", text="Public Key")
-        self.treeview.heading("Kind", text="Kind")
-        self.treeview.heading("Created_At", text="Created At")
-        self.treeview.heading("Content", text="Content")
+        self.treeview = ttk.Treeview(self, columns=("client_pub", "kind", "allowed", "mgmt_note_id"), show='headings')
+        self.treeview.heading("client_pub", text="client_pub")
+        self.treeview.heading("kind", text="kind")
+        self.treeview.heading("allowed", text="allowed")
+        self.treeview.heading("mgmt_note_id", text="mgmt_note_id")
         self.treeview.pack(pady=10, fill='both', expand=True)
 
-        # Add Entry Fields and Buttons
-        sidebar = ttk.Frame(content_frame, width=200)
-        sidebar.pack(side='left', fill='y')
-        sidebar.pack_propagate(False)
-
-        ttk.Label(sidebar, text="Relay URL").pack(pady=5)
-        ttk.Entry(sidebar, textvariable=self.relay_url).pack(pady=5)
-
-        ttk.Label(sidebar, text="Public Key").pack(pady=5)
-        ttk.Entry(sidebar, textvariable=self.public_key).pack(pady=5)
-
-        #ttk.Label(sidebar, text="Private Key").pack(pady=5)
-        #ttk.Entry(sidebar, textvariable=self.private_key).pack(pady=5)
-#
-        #ttk.Label(sidebar, text="Content").pack(pady=5)
-        #ttk.Entry(sidebar, textvariable=self.content).pack(pady=5)
-
-        #ttk.Label(sidebar, text="Kind").pack(pady=5)
-        #ttk.Entry(sidebar, textvariable=self.kind).pack(pady=5)
-
-        #ttk.Label(sidebar, text="Tags (as JSON array)").pack(pady=5)
-        #ttk.Entry(sidebar, textvariable=self.tags).pack(pady=5)
-
-        button1 = ttk.Button(sidebar, text="Ban pubkey", command=lambda: self.send_note())
-        button1.pack(pady=10)
-
-        button2 = ttk.Button(sidebar, text="Query Relays", command=lambda: self.query_relays)
-        button2.pack(pady=10)
-
-    def send_note(self):
+    def query_allow_list(self):
         relay_urls = [self.relay_url.get()]
-        public_key = self.public_key.get()
-        private_key = self.private_key.get()
-        content = self.content.get()
-        kind = int(self.kind.get())
-        tags = json.loads(self.tags.get())
-
-        event = Event(relays=relay_urls, output_widget=self.output_text, treeview=self.treeview)
-        asyncio.run(event.send_event(public_key, private_key, content, kind, tags))
-        messagebox.showinfo("Send Note", f"Sent note: '{content}' to relay: {relay_urls}")
-
-    def query_relays(self):
-        relay_urls = [self.relay_url.get()]
-        kind = int(self.kind.get())
-        authors = [self.public_key.get()]
-        limit = 2
-
         query_dict = {
-            "kinds": [kind],
-            # "authors": authors,
-            "limit": limit
+            "kinds": [42069]
         }
 
-        event = Event(relays=relay_urls, output_widget=self.output_text, treeview=self.treeview)
+        event = Event(relays=relay_urls, output_widget=self.output_text, treeview=self.treeview, controller=self.controller)
         asyncio.run(event.query_relays(query_dict))
-        messagebox.showinfo("Query Relays", "Query sent to relays")
 
     def clear_output(self):
         self.output_text.delete('1.0', tk.END)

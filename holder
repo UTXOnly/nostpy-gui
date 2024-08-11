@@ -1,2 +1,0 @@
-nostpy-cli send_event -pubkey 5ce5b352f1ef76b1dffc5694dd5b34126137184cc9a7d78cba841c0635e17952 -privkey 2b1e4e1f26517dda57458596760bb3bd3bd3717083763166e12983a6421abc18 -content test27 -tags "[
-['t', 'vvfdvfd'], ['v', 'v2']]" -kind 1 --relay wss://relay.nostpy.lol wss://relay.damus.io wss://nos.lol

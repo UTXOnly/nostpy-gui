@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nostpy-gui"
+version = "0.1.0"
+description = "A A relay management client"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Brian Hartford", email = "bh419@protonmail.com"}
+]
+requires-python = ">=3.7"
+dependencies = [
+    "tkinter",
+    "asyncio",
+    "secp256k1",
+    "websockets",
+]
+
+[project.urls]
+repository = "https://github.com/UTXOnly/nostpy-gui"
