@@ -1,8 +1,8 @@
 
 import tkinter as tk
-from tkinter import ttk, messagebox, colorchooser, simpledialog
+from tkinter import ttk
 import asyncio
-from event import Event
+from nostpy_gui.event import Event
 
 class QueryRelayPage(ttk.Frame):
     def __init__(self, parent, controller):
